@@ -1,55 +1,43 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import google.generativeai as genai
 
-st.set_page_config(page_title="Company Data Chatbot", layout="wide")
+# 🔐 Add your Gemini API key here
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
 
-st.title("📊 AI Company Data Chatbot")
-st.write("Ask questions about your company sales data.")
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-uploaded_file = st.file_uploader("Upload your Company CSV File", type=["csv"])
+st.set_page_config(page_title="AI Company Data Chatbot", layout="wide")
+
+st.title("🤖 AI Company Data Chatbot (Powered by Gemini)")
+st.write("Ask any question about your company dataset.")
+
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    df.columns = df.columns.str.strip()
-
     st.subheader("Dataset Preview")
     st.dataframe(df)
 
     question = st.text_input("Ask your question:")
 
     if question:
-        question = question.lower()
+        prompt = f"""
+        You are a data analyst.
+        Here is the dataset:
 
-        if "total" in question and "sales" in question:
-            total = df["Sales"].sum()
-            st.success(f"💰 Total Sales: {total}")
+        {df.head(20).to_string()}
 
-        elif "average" in question and "sales" in question:
-            avg = df["Sales"].mean()
-            st.success(f"📈 Average Sales: {avg}")
+        Columns: {list(df.columns)}
 
-        elif "top" in question:
-            top_products = df.groupby("Product")["Sales"].sum().sort_values(ascending=False).head(5)
+        User question: {question}
 
-            st.subheader("🏆 Top 5 Products")
-            st.write(top_products)
+        Answer clearly in simple business language.
+        If calculation is needed, explain the result.
+        """
 
-            fig, ax = plt.subplots()
-            top_products.plot(kind="bar", ax=ax)
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
+        response = model.generate_content(prompt)
 
-        elif "region" in question:
-            region_sales = df.groupby("Region")["Sales"].sum()
-
-            st.subheader("🌍 Sales by Region")
-            st.write(region_sales)
-
-            fig, ax = plt.subplots()
-            region_sales.plot(kind="bar", ax=ax)
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
-
-        else:
-            st.warning("❌ I don't understand that question yet. Try asking about total, average, top products, or region sales.")
+        st.subheader("📊 AI Response")
+        st.write(response.text)
